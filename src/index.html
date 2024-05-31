@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>PHP Web Sockets With Ratchet</title>
+	<style>
+		.margin-10 {
+			margin: 10px 5px 10px 5px;
+		}
+
+		.padding-10 {
+			padding: 10px 1em 10px 1em;
+		}
+
+		.no_bullets {
+			list-style-type: none;
+		}
+
+		.text {
+			display: inline-block;
+		}
+
+		.align-right {
+			text-align: right;
+		}
+
+		.align-left {
+			text-align: left;
+		}
+
+		.bg-coral {
+			background-color: lightcoral;
+		}
+
+		.bg-white {
+			background-color: whitesmoke;
+		}
+		.bg-darkslateblue {
+			background-color: darkslateblue;
+		}
+		.color-white {
+			color: white;
+		}
+
+		.color-black {
+			color: black;
+		}
+
+		.color-gray {
+			color: lightgray;
+		}
+
+		.border{
+			border: 1px solid black;
+		}
+
+		.border-bottom {
+			border: 1px solid black;
+		}
+
+		.border-radius-5 {
+			border-radius: 5px;
+		}
+
+		#bottom_wrapper{
+			width: 350px;
+		}
+
+		#messages {
+			height: 400px;
+			width: 350px;
+			overflow-y: auto;
+			border: 1px solid black;
+			border-radius: 5px;
+		}
+
+		#message_input {
+			width: 300px;
+		}
+
+		#status {
+			position: absolute;
+			top: 0px;
+			right: 8px;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="chat_window">
+		<div id="top_menu">
+			<div id="title" class="bg-coral border-bottom color-white align-left margin-10 padding-10">Chat</div>
+			<div id="status" class="bg-white color-black margin-10 padding-10 border-bottom"> </div>
+		</div>
+		<div id="bottom_wrapper" class="bg-white margin-10 padding-10">
+			<input id="message_input" class="margin-10 padding-10 border-radius-5"
+				placeholder="Type your message here..." />
+
+			<div>
+				<span id="send_message" >
+					<button class="margin-10 padding-10 color-black bg-white border border-radius-5">Send</button>
+				</span>
+				<span id="clear_messages">
+					<button class="margin-10 padding-10 color-black bg-white border border-radius-5">Clear</button>
+				</span>
+				<span id="reset_connection">
+					<button class="margin-10 padding-10 color-black bg-white border border-radius-5">Reload</button>
+				</span>
+			</div>
+
+		</div>
+	</div>
+	<ul id="messages"></ul>
+	<div class="message_template" style="display: none;">
+		<li class="message no_bullets">
+			<div class="text"></div>
+		</li>
+	</div>
+
+	<script>
+		(function () {
+			// Socket Server
+			let conn;
+			conn = new WebSocket('ws://localhost:8080');
+
+			// Crea un 'objecte' Message
+			let Message = function (arg) {
+				// properties
+				this.text = arg.text;
+				this.received = arg.received || false;
+				// crea el mètode display
+				this.display = function (_this) {
+					return function () {
+						console.log(_this);
+						// recupera la plantilla
+						let messageTemplate = document.querySelector('.message_template').innerHTML.trim();
+						// crea un node fora del document i afegeix-li la plantilla
+						let tempDiv = document.createElement('div');
+						tempDiv.innerHTML = messageTemplate;
+						// construeix el node missatge i afegeix-li el text
+						let message = tempDiv.firstElementChild;
+						message.querySelector('.text').innerHTML = _this.text;
+						// canvia la classe a 'sent' o 'received'
+						if (_this.received) {
+							message.querySelector('.text').classList.add('color-white','margin-10','padding-10','border-radius-5','bg-darkslateblue');
+							message.classList.add('align-right');
+						} else {
+							message.querySelector('.text').classList.add('color-black','margin-10','padding-10','border-radius-5','bg-coral');
+						}
+						// afegeix el node a la cua de missatges
+						let parent = document.querySelector('#messages');
+						parent.appendChild(message);
+						message.scrollIntoView();
+					};
+				}(this);
+				return this;
+			};
+
+			document.addEventListener('DOMContentLoaded', function () {
+				let getInput = function () {
+					// recupera l'entrada
+					let value = document.querySelector('#message_input').value;
+					// neteja l'entrada de missatges
+					document.querySelector('#message_input').value = '';
+					return value;
+				};
+
+				let resetConnection = function () {
+					conn.close();
+					window.location.reload();
+				};
+
+				let clearMessages = function () {
+					// esborra tots els missatges
+					document.querySelector('#messages').innerHTML = '';
+				};
+
+				let sendMessage = function (text) {
+					// si no hi text, no envia el missatge
+					if (text.trim() === '') {
+						return;
+					}
+					// envia el missatge
+					conn.send(text);
+
+					// mostra el missatge enviat
+					let message = new Message({ text: text });
+					message.display();
+				};
+
+				let receiveMessage = function (text) {
+					// si no hi text, no mostra el missatge
+					if (text.trim() === '') {
+						return;
+					}
+
+					// mostra el missatge rebut
+					let message = new Message({ text: text, received: true });
+					message.display();
+				};
+
+
+				// User events
+				document.querySelector('#reset_connection').addEventListener('click', function (e) {
+					resetConnection();
+				});
+
+				document.querySelector('#clear_messages').addEventListener('click', function (e) {
+					clearMessages();
+				});
+
+				document.querySelector('#send_message').addEventListener('click', function (e) {
+					sendMessage(getInput());
+				});
+
+				document.querySelector('#message_input').addEventListener('keyup', function (e) {
+					if (e.which === 13) {
+						sendMessage(getInput());
+					}
+				});
+
+				// Socket events
+				conn.onmessage = function (e) {
+					console.log(e.data);
+					receiveMessage(e.data);
+				};
+
+				conn.onerror = function (e) {
+					console.error(e.data);
+					document.getElementById('status').innerHTML = "Connection error";
+				}
+
+				conn.onopen = function (e) {
+					console.log("Connection established!");
+					document.getElementById('status').innerHTML = "Connection established!";
+				};
+
+				conn.onclose = function () {
+					console.warn("Connection closed!");
+					document.getElementById('status').innerHTML = "Connection closed";
+				}
+			});
+		}).call(this);
+
+	</script>
+</body>
+
+</html>

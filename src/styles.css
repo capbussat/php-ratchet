@@ -1,0 +1,13 @@
+.text{
+display: inline-block;
+background-color: blue;
+color: whitesmoke;
+}
+
+.left{
+text-align: left;
+}
+
+.right{
+text-align: right;	
+}
