@@ -1,4 +1,4 @@
-n### WebSockets Server and Websockets Javascript client
+### WebSockets Server and Websockets Javascript client
 This is a simple broadcast example to play with a websocket PHP server and an HTML page with a Javascript client to send messages. 
 
 You can open any number of windows and send messages between them.
